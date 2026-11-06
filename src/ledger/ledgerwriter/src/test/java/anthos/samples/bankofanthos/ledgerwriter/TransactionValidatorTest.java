@@ -82,7 +82,7 @@ class TransactionValidatorTest {
     };
 
     private static final Integer[] INVALID_TRANSACTION_AMOUNT = {
-        0, -23, Integer.MIN_VALUE
+        null, 0, -23, Integer.MIN_VALUE
     };
 
     @BeforeEach

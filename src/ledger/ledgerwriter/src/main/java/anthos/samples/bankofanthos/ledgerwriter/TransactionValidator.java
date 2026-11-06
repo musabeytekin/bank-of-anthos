@@ -94,7 +94,7 @@ public class TransactionValidator {
             throw new IllegalArgumentException(EXCEPTION_MESSAGE_SEND_TO_SELF);
         }
         // Ensure amount is valid value.
-        if (amount <= 0) {
+        if (amount == null || amount <= 0) {
             LOGGER.error("Invalid transaction: Transaction amount invalid");
             throw new IllegalArgumentException(
                     EXCEPTION_MESSAGE_INVALID_AMOUNT);
