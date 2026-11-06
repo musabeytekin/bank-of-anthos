@@ -18,12 +18,15 @@ package anthos.samples.bankofanthos.ledgerwriter;
 
 import static anthos.samples.bankofanthos.ledgerwriter.ExceptionMessages.EXCEPTION_MESSAGE_DUPLICATE_TRANSACTION;
 import static anthos.samples.bankofanthos.ledgerwriter.ExceptionMessages.EXCEPTION_MESSAGE_INSUFFICIENT_BALANCE;
+import static anthos.samples.bankofanthos.ledgerwriter.ExceptionMessages.EXCEPTION_MESSAGE_INVALID_AMOUNT;
 import static anthos.samples.bankofanthos.ledgerwriter.ExceptionMessages.EXCEPTION_MESSAGE_WHEN_AUTHORIZATION_HEADER_NULL;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 
@@ -49,6 +52,7 @@ import org.springframework.web.client.ResourceAccessException;
 class LedgerWriterControllerTest {
 
     private LedgerWriterController ledgerWriterController;
+    private StackdriverMeterRegistry meterRegistry;
 
     @Mock
     private TransactionValidator transactionValidator;
@@ -80,7 +84,7 @@ class LedgerWriterControllerTest {
     @BeforeEach
     void setUp() {
         initMocks(this);
-        StackdriverMeterRegistry meterRegistry = new StackdriverMeterRegistry(new StackdriverConfig() {
+        meterRegistry = new StackdriverMeterRegistry(new StackdriverConfig() {
               @Override
               public boolean enabled() {
                 return false;
@@ -274,6 +278,34 @@ class LedgerWriterControllerTest {
         assertEquals(EXCEPTION_MESSAGE,
                 actualResult.getBody());
         assertEquals(HttpStatus.BAD_REQUEST, actualResult.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("Given a real validator and a zero transaction amount, " +
+            "return HTTP Status 400 and do not save")
+    void addTransactionFailWhenAmountIsZero() {
+        // Given
+        final LedgerWriterController controller = new LedgerWriterController(
+                verifier, meterRegistry,
+                transactionRepository, new TransactionValidator(),
+                LOCAL_ROUTING_NUM, BALANCES_API_ADDR, VERSION);
+        when(claim.asString()).thenReturn(AUTHED_ACCOUNT_NUM);
+        when(transaction.getFromRoutingNum()).thenReturn(LOCAL_ROUTING_NUM);
+        when(transaction.getFromAccountNum()).thenReturn(AUTHED_ACCOUNT_NUM);
+        when(transaction.getToRoutingNum()).thenReturn(NON_LOCAL_ROUTING_NUM);
+        when(transaction.getToAccountNum()).thenReturn("0987654321");
+        when(transaction.getAmount()).thenReturn(0);
+
+        // When
+        final ResponseEntity actualResult =
+                controller.addTransaction(BEARER_TOKEN, transaction);
+
+        // Then
+        assertNotNull(actualResult);
+        assertEquals(EXCEPTION_MESSAGE_INVALID_AMOUNT,
+                actualResult.getBody());
+        assertEquals(HttpStatus.BAD_REQUEST, actualResult.getStatusCode());
+        verify(transactionRepository, never()).save(transaction);
     }
 
     @Test
