@@ -71,7 +71,7 @@ INVALID_ACCOUNT_NUMS = [
     "123123123💸", # 9 digits and 1 emoji
     ]
 
-# Labels must be >0 and <=30 chars, alphanumeric and spaces, can't start with space
+# Labels must be >0 and <=30 chars, letters (any language), digits and spaces, can't start with space
 INVALID_LABELS = [
     None, # null
     "", # empty string

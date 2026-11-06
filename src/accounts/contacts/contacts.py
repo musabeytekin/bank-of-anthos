@@ -166,8 +166,8 @@ def create_app():
         if (req["is_external"] and req["routing_num"] == app.config["LOCAL_ROUTING"]):
             raise UserWarning("invalid routing number")
         # Validate label
-        # Must be >0 and <=30 chars, alphanumeric and spaces, can't start with space
-        if req["label"] is None or not re.match(r"^[0-9a-zA-Z][0-9a-zA-Z ]{0,29}$", req["label"]):
+        # Must be >0 and <=30 chars, letters (any language), digits and spaces, can't start with space
+        if req["label"] is None or not re.match(r"\A[^\W_](?:[^\W_]| ){0,29}\Z", req["label"]):
             raise UserWarning("invalid account label")
 
     def _check_contact_allowed(username, accountid, req):

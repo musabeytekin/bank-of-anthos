@@ -96,6 +96,17 @@ class TestContacts(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, b"ok")
 
+    def test_create_contact_201_status_code_international_labels(self):
+        """test adding contacts whose labels contain non-ASCII letters"""
+        for label in ["José García", "Müller", "李小龍", "Иван 2"]:
+            self.mocked_db.return_value.add_contact.reset_mock()
+            response = self.test_app.post(
+                "/contacts/{}".format(EXAMPLE_USER),
+                headers=EXAMPLE_HEADERS,
+                data=json.dumps(create_new_contact(label=label)),
+            )
+            self.assertEqual(response.status_code, 201, label)
+
     def test_create_contact_201_status_code_correct_db_contact_object(self):
         """test adding a new contact to a users contact list"""
         # create example contact request
