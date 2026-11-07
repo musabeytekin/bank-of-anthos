@@ -50,6 +50,25 @@ BALANCE_NAME = "balance"
 CONTACTS_NAME = "contacts"
 TRANSACTION_LIST_NAME = "transaction_list"
 
+def parse_amount_cents(user_input):
+    """Convert a user-entered dollar amount into integer cents.
+
+    Raises UserWarning with a customer-facing message if the input is not
+    a number or has more than two decimal places (which would be silently
+    truncated otherwise).
+    """
+    try:
+        amount = Decimal(user_input.strip())
+    except (DecimalException, ValueError, AttributeError) as err:
+        raise UserWarning('{} is not a valid number'.format(user_input)) from err
+    if not amount.is_finite():
+        raise UserWarning('{} is not a valid number'.format(user_input))
+    cents = amount * 100
+    if cents != cents.to_integral_value():
+        raise UserWarning('amount cannot have more than two decimal places')
+    return int(cents)
+
+
 # pylint: disable-msg=too-many-locals
 # pylint: disable-msg=too-many-branches
 def create_app():
@@ -228,8 +247,7 @@ def create_app():
                                  app.config['LOCAL_ROUTING'],
                                  False)
 
-            user_input = request.form['amount']
-            payment_amount = int(Decimal(user_input) * 100)
+            payment_amount = parse_amount_cents(request.form['amount'])
             transaction_data = {"fromAccountNum": account_id,
                                 "fromRoutingNum": app.config['LOCAL_ROUTING'],
                                 "toAccountNum": recipient,
@@ -253,9 +271,6 @@ def create_app():
                                     msg=msg,
                                     _external=True,
                                     _scheme=app.config['SCHEME']))
-        except (ValueError, DecimalException) as num_err:
-            app.logger.error('Error submitting payment: %s', str(num_err))
-            msg = 'Payment failed: {} is not a valid number'.format(user_input)
 
         return redirect(url_for('home',
                                 msg='Payment failed',
@@ -301,7 +316,7 @@ def create_app():
                                 "fromRoutingNum": external_routing_num,
                                 "toAccountNum": account_id,
                                 "toRoutingNum": app.config['LOCAL_ROUTING'],
-                                "amount": int(Decimal(request.form['amount']) * 100),
+                                "amount": parse_amount_cents(request.form['amount']),
                                 "uuid": request.form['uuid']}
             _submit_transaction(transaction_data)
             app.logger.info('Deposit submitted successfully.')

@@ -35,4 +35,5 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pylint>=3.0",
+    "pytest>=9.2.0",
 ]
