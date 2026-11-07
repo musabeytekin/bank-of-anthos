@@ -17,7 +17,8 @@ db manages interactions with the underlying database
 """
 
 import logging
-from sqlalchemy import create_engine, MetaData, Table, Column, String, Boolean
+from sqlalchemy import create_engine, MetaData, Table, Column, String, Boolean, UniqueConstraint
+from sqlalchemy.exc import IntegrityError
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 
 
@@ -38,6 +39,10 @@ class ContactsDb:
             Column("account_num", String, nullable=False),
             Column("routing_num", String, nullable=False),
             Column("is_external", Boolean, nullable=False),
+            UniqueConstraint(
+                "username", "account_num", "routing_num",
+                name="uq_contacts_username_account_routing",
+            ),
         )
 
         # Set up tracing autoinstrumentation for sqlalchemy
@@ -51,12 +56,21 @@ class ContactsDb:
 
         Params: user - a key/value dict of attributes describing a new contact
                     {'username': username, 'label': label, ...}
-        Raises: SQLAlchemyError if there was an issue with the database
+        Raises: ValueError if the contact is a duplicate for this user
+                SQLAlchemyError if there was an issue with the database
         """
         statement = self.contacts_table.insert().values(contact)
         self.logger.debug("QUERY: %s", str(statement))
-        with self.engine.connect() as conn:
-            conn.execute(statement)
+        try:
+            with self.engine.connect() as conn:
+                conn.execute(statement)
+        except IntegrityError as err:
+            # Postgres: 23505 unique_violation; sqlite: "UNIQUE constraint"
+            orig = err.orig
+            if (getattr(orig, "pgcode", None) == "23505"
+                    or "UNIQUE constraint" in str(orig)):
+                raise ValueError("account already exists as a contact") from err
+            raise
 
     def get_contacts(self, username):
         """Get a list of contacts for the specified username.

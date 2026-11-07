@@ -44,3 +44,8 @@ CREATE TABLE IF NOT EXISTS contacts (
 
 CREATE INDEX IF NOT EXISTS idx_contacts_username ON contacts (username);
 
+-- Refuse duplicate contacts for the same user, account and routing number.
+-- A unique index (rather than an inline constraint) is applied to existing
+-- databases too, since CREATE TABLE IF NOT EXISTS skips existing tables.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_contacts_username_account_routing
+  ON contacts (username, account_num, routing_num);

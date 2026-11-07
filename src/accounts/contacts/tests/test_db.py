@@ -65,6 +65,7 @@ class TestDb(unittest.TestCase):
         num_contacts = random.randrange(40)
         for i in range(num_contacts):
             self.contact["label"] = "label-{}".format(i)
+            self.contact["account_num"] = "{:010d}".format(i)
             self.db.add_contact(self.contact)
             added_contacts.append(self.contact.copy())
         # get contact from db
@@ -80,3 +81,11 @@ class TestDb(unittest.TestCase):
         """test getting contacts for a non existent user"""
         # assert None when user does not exist
         self.assertEqual(0, len(self.db.get_contacts("baz")))
+
+    def test_add_duplicate_contact_raises_value_error(self):
+        """a duplicate user/account/routing is refused by the db"""
+        self.db.add_contact(self.contact)
+        dup = self.contact.copy()
+        dup["label"] = "other label"
+        with self.assertRaises(ValueError):
+            self.db.add_contact(dup)
